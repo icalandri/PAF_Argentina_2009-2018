@@ -10,5 +10,48 @@ It contains the code used to clean, code, analyze and elaborate the tables and g
 ##Flow
 For the analysis please follow the following code execution order:
 
-:closed_book: *Total PAF calculation*: 
-:globe_with_meridians: **Argentina administrative map**: administrative level 0 (country), 1 (province, national territory, or federal district; provincia, territorio nacional, o distrito federal), and 2 (department or part; departamento o partido) boundaries. _Origin_: https://data.humdata.org/dataset/cod-ab-arg
+:closed_book: **Total PAF calculation**:
+1. 01_Data_tidy_2018
+2. 02_comunalities_2018
+3. 03_B_factors_outside_dataset_2018
+4. 04_A_PAF_calculation_2018
+
+:orange_book: **Calculation of change in time of Total PAF**
+1. 01_Data_tidy_2018
+2. 02_comunalities_2018
+3. 04_A_PAF_calculation_2018_ w_o_others
+4. 01_Data_tidy_2009
+5. 02_comunalities_2009
+7. 03_A_PAF_calculation_2009
+4. 01_Data_tidy_2013
+5. 02_comunalities_2013
+7. 03_A_PAF_calculation_2013
+8. 7. 05_year_evolution_paf
+
+:books: **Calculation of sex differences**
+1. 01_Data_tidy_2018
+2. sex_pipeline
+3. sex_plot_annex
+4. sex_test_and_table_annex
+
+:books: **Calculation of sex differences in time**
+1. 01_Data_tidy_2018
+2. 01_Data_tidy_2009
+3. 01_Data_tidy_2013
+4. sex_pipeline_2009
+5. sex_pipeline_2013
+6. sex_plot_evolution
+
+:notebook: **Calculation of household income differences**
+1. 01_Data_tidy_2018
+2. quintile_pipeline
+3. quintile_plot_annex
+4. quintile_test_and_table_annex
+
+:books: **Calculation of sex differences in time**
+1. 01_Data_tidy_2018
+2. 01_Data_tidy_2009
+3. 01_Data_tidy_2013
+4. quintile_pipeline_2009
+5. quintile_pipeline_2013
+6. quintile_plot_evolution
