@@ -26,7 +26,7 @@ For the analysis please follow the following code execution order:
 4. 01_Data_tidy_2013
 5. 02_comunalities_2013
 7. 03_A_PAF_calculation_2013
-8. 7. 05_year_evolution_paf
+8. 05_year_evolution_paf
 
 :books: **Calculation of sex differences**
 1. 01_Data_tidy_2018
