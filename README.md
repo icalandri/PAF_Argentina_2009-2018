@@ -7,7 +7,7 @@ It contains the code used to clean, code, analyze and elaborate the tables and g
 
 
 
-##Flow
+## Flow
 For the analysis please follow the following code execution order:
 
 :closed_book: **Total PAF calculation**:
@@ -48,7 +48,7 @@ For the analysis please follow the following code execution order:
 3. quintile_plot_annex
 4. quintile_test_and_table_annex
 
-:books: **Calculation of sex differences in time**
+:books: **Calculation of  household income differences in time**
 1. 01_Data_tidy_2018
 2. 01_Data_tidy_2009
 3. 01_Data_tidy_2013
