@@ -1,0 +1,1656 @@
+
+#  Date 21 April 2023                                                           
+#                                                                               
+#  Input: Output of “01_data_tidy” script                                       
+#                                                                               
+#  Author: Ismael L Calandri                                                    
+#                                                                               
+#  Output: a table with PAF calculation by quintile salay income                            
+
+
+
+
+# 0. Packages  ==============================
+rm(list = ls())
+library(readr)
+library(tidyverse)
+library("factoextra")
+library("FactoMineR")
+library(survey)
+library(gt)
+library(flextable)
+
+# 1. First quintil  ==============================
+
+
+#...............................................................................
+#                                                                              .
+# First quintil ===============================================================.                                                                   .
+#                                                                              .
+#...............................................................................
+
+
+# 2. Data origin (risk_factor coded) ==============================
+
+load("base2018_general.RData")
+rm(basecom, comunalities)
+
+baseq1<-base2018 %>% filter(quintil_uc==1)
+
+# 3. Comunalities calculation==================
+
+basecom_q1<-baseq1 %>% select(starts_with("PAF"))
+
+
+library(psych)
+## 1. Tetrachoric correlation ==============================
+a<-tetrachoric(basecom_q1)                             
+b<-as.data.frame(a$rho)
+
+## 2. Communalitie calculation ===========
+
+# PCA resolution
+# Analize eigenvalues, keep Dim w/ eigenvalues >1
+eigenvalues <-eigen(b)$values
+eigenvalues
+
+# Only 3 dimensions has eigenvalues > 1
+eigenVectors<-eigen(b)$vectors
+eigenVectors
+
+comunalities<-as.data.frame(eigenVectors)
+comunalities$RF<-names(b)
+
+comunalities$comunality<-comunalities$V1^2+comunalities$V2^2+comunalities$V3^2
+
+comunalities_q1<-comunalities %>% select(RF, comunality)
+
+rm(base2018, a, b, eigenVectors, eigenvalues, comunalities)
+
+# 4. PAF table ================================================================
+
+## 1. Survey design =============================================
+base_midlife<-baseq1 %>% filter(bhch04>=45 & bhch04<=64) 
+n_midlife_q1<-nrow(base_midlife)
+
+design_midlife <- svydesign(id=~id, weights=~wf1p, data=base_midlife)
+
+base_latelife<-baseq1 %>% filter(bhch04>64) 
+design_latelife <- svydesign(id=~id, weights=~wf1p, data=base_latelife)
+n_latelife_q1<-nrow(base_latelife)
+
+n_total_q1<-n_latelife_q1 + n_midlife_q1
+
+## 2. Calculate prevalence =============================================
+
+### 2.1 Midlife factors =============================================
+PAF_education<-as.data.frame(svytable(~PAF_education, design = design_midlife))
+PAF_education<-PAF_education %>% pivot_wider(names_from = PAF_education, values_from =Freq)
+PAF_education$RF<-"PAF_education"
+PAF_education$Prevalence<-PAF_education$`1`/(PAF_education$`1`+PAF_education$`0`)
+a<-svyciprop(~PAF_education==1, design_midlife, method="li")
+
+PAF_education$LCI<-attr(a,"ci")[1]
+PAF_education$UCI<-attr(a,"ci")[2]
+
+
+PAF_obesity<-as.data.frame(svytable(~PAF_obesity, design = design_midlife))
+PAF_obesity<-PAF_obesity %>% pivot_wider(names_from = PAF_obesity, values_from =Freq)
+PAF_obesity$RF<-"PAF_obesity"
+PAF_obesity$Prevalence<-PAF_obesity$`1`/(PAF_obesity$`1`+PAF_obesity$`0`)
+a<-svyciprop(~PAF_obesity==1, design_midlife, method="li")
+PAF_obesity$LCI<-attr(a,"ci")[1]
+PAF_obesity$UCI<-attr(a,"ci")[2]
+
+
+PAF_HBP<-as.data.frame(svytable(~PAF_HBP, design = design_midlife))
+PAF_HBP<-PAF_HBP %>% pivot_wider(names_from = PAF_HBP, values_from =Freq)
+PAF_HBP$RF<-"PAF_HBP"
+PAF_HBP$Prevalence<-PAF_HBP$`1`/(PAF_HBP$`1`+PAF_HBP$`0`)
+a<-svyciprop(~PAF_HBP==1, design_midlife, method="li")
+PAF_HBP$LCI<-attr(a,"ci")[1]
+PAF_HBP$UCI<-attr(a,"ci")[2]
+
+
+PAF_alcohol<-as.data.frame(svytable(~PAF_alcohol, design = design_midlife))
+PAF_alcohol<-PAF_alcohol %>% pivot_wider(names_from = PAF_alcohol, values_from =Freq)
+PAF_alcohol$RF<-"PAF_alcohol"
+PAF_alcohol$Prevalence<-PAF_alcohol$`1`/(PAF_alcohol$`1`+PAF_alcohol$`0`)
+a<-svyciprop(~PAF_alcohol==1, design_midlife, method="li")
+PAF_alcohol$LCI<-attr(a,"ci")[1]
+PAF_alcohol$UCI<-attr(a,"ci")[2]
+
+### 2.2 Later-life factors =============================================
+
+PAF_smoking<-as.data.frame(svytable(~PAF_smoking, design = design_latelife))
+PAF_smoking<-PAF_smoking %>% pivot_wider(names_from = PAF_smoking, values_from =Freq)
+PAF_smoking$RF<-"PAF_smoking"
+PAF_smoking$Prevalence<-PAF_smoking$`1`/(PAF_smoking$`1`+PAF_smoking$`0`)
+a<-svyciprop(~PAF_smoking==1, design_latelife, method="li")
+PAF_smoking$LCI<-attr(a,"ci")[1]
+PAF_smoking$UCI<-attr(a,"ci")[2]
+
+
+PAF_socialisolation<-as.data.frame(svytable(~PAF_socialisolation, design = design_latelife))
+PAF_socialisolation<-PAF_socialisolation %>% pivot_wider(names_from = PAF_socialisolation, values_from =Freq)
+PAF_socialisolation$RF<-"PAF_socialisolation"
+PAF_socialisolation$Prevalence<-PAF_socialisolation$`1`/(PAF_socialisolation$`1`+PAF_socialisolation$`0`)
+a<-svyciprop(~PAF_socialisolation==1, design_latelife, method="li")
+PAF_socialisolation$LCI<-attr(a,"ci")[1]
+PAF_socialisolation$UCI<-attr(a,"ci")[2]
+
+
+PAF_pinactivity<-as.data.frame(svytable(~PAF_pinactivity, design = design_latelife))
+PAF_pinactivity<-PAF_pinactivity %>% pivot_wider(names_from = PAF_pinactivity, values_from =Freq)
+PAF_pinactivity$RF<-"PAF_pinactivity"
+PAF_pinactivity$Prevalence<-PAF_pinactivity$`1`/(PAF_pinactivity$`1`+PAF_pinactivity$`0`)
+a<-svyciprop(~PAF_pinactivity==1, design_latelife, method="li")
+PAF_pinactivity$LCI<-attr(a,"ci")[1]
+PAF_pinactivity$UCI<-attr(a,"ci")[2]
+
+PAF_DBT<-as.data.frame(svytable(~PAF_DBT, design = design_latelife))
+PAF_DBT<-PAF_DBT %>% pivot_wider(names_from = PAF_DBT, values_from =Freq)
+PAF_DBT$RF<-"PAF_DBT"
+PAF_DBT$Prevalence<-PAF_DBT$`1`/(PAF_DBT$`1`+PAF_DBT$`0`)
+a<-svyciprop(~PAF_DBT==1, design_latelife, method="li")
+PAF_DBT$LCI<-attr(a,"ci")[1]
+PAF_DBT$UCI<-attr(a,"ci")[2]
+
+PAF_air<-as.data.frame(svytable(~PAF_air, design = design_latelife))
+PAF_air<-PAF_air %>% pivot_wider(names_from = PAF_air, values_from =Freq)
+PAF_air$RF<-"PAF_air"
+PAF_air$Prevalence<-PAF_air$`1`/(PAF_air$`1`+PAF_air$`0`)
+a<-svyciprop(~PAF_air==1, design_latelife, method="li")
+PAF_air$LCI<-attr(a,"ci")[1]
+PAF_air$UCI<-attr(a,"ci")[2]
+
+
+## 3. Integrating into table ==================================================
+
+prevalences<-rbind(PAF_education,
+                   PAF_obesity, 
+                   PAF_HBP, 
+                   PAF_alcohol, 
+                   PAF_smoking, 
+                   PAF_socialisolation, 
+                   PAF_pinactivity, 
+                   PAF_DBT,
+                   PAF_air)
+
+
+prevalences<-prevalences %>% select(RF, Prevalence, LCI, UCI)
+
+RR<-c(1.6,1.6,1.6,1.2,1.6,1.6,1.4,1.5,1.1)
+
+
+prevalences$RR<-RR
+
+# comunalities<-comunalities %>% rename(RF=risk_factor)
+
+base_summary_q1<-left_join(prevalences, comunalities_q1, by="RF")
+
+
+## 4. PAF calculation=====================================
+
+base_summary_q1$weigth<-1-base_summary_q1$comunality
+
+base_summary_q1$PAF<-((base_summary_q1$Prevalence*
+                          (base_summary_q1$RR-1)))/
+  (1+base_summary_q1$Prevalence*(base_summary_q1$RR-1))
+
+base_summary_q1$overall_PAF<-1-(base_summary_q1$comunality*base_summary_q1$PAF)
+
+base_summary_q1$individual_PAF<-base_summary_q1$PAF/
+  sum(base_summary_q1$PAF)*(1-prod(base_summary_q1$overall_PAF))
+
+base_summary_q1$"1-PAF"<-1-base_summary_q1$PAF
+
+unique_overall_weigthed_PAF_q1<-1-prod(base_summary_q1$overall_PAF)
+unique_overall_PAF_q1<-1-prod(1-base_summary_q1$PAF)
+
+unique_overall_weigthed_PAF_q1
+unique_overall_PAF_q1
+
+
+## 5. Confident intervals===========================
+
+base_summary_q1$individual_PAF_LCI<-NA
+base_summary_q1$individual_PAF_UCI<-NA
+
+
+### 3.1 education ==================================
+a<-prop.test((base_summary_q1$individual_PAF[base_summary_q1$RF=="PAF_education"]*n_midlife_q1),
+             n_midlife_q1,
+             correct=T)
+base_summary_q1$individual_PAF_LCI[base_summary_q1$RF=="PAF_education"]<-a$conf.int[1]
+base_summary_q1$individual_PAF_UCI[base_summary_q1$RF=="PAF_education"]<-a$conf.int[2]
+
+### 3.2 obesity ==================================
+a<-prop.test((base_summary_q1$individual_PAF[base_summary_q1$RF=="PAF_obesity"]*n_midlife_q1),
+             n_midlife_q1,
+             correct=T)
+base_summary_q1$individual_PAF_LCI[base_summary_q1$RF=="PAF_obesity"]<-a$conf.int[1]
+base_summary_q1$individual_PAF_UCI[base_summary_q1$RF=="PAF_obesity"]<-a$conf.int[2]
+
+### 3.3 HBP ==================================
+a<-prop.test((base_summary_q1$individual_PAF[base_summary_q1$RF=="PAF_HBP"]*n_midlife_q1),
+             n_midlife_q1,
+             correct=T)
+base_summary_q1$individual_PAF_LCI[base_summary_q1$RF=="PAF_HBP"]<-a$conf.int[1]
+base_summary_q1$individual_PAF_UCI[base_summary_q1$RF=="PAF_HBP"]<-a$conf.int[2]
+
+### 3.4 Alcohol ==================================
+a<-prop.test((base_summary_q1$individual_PAF[base_summary_q1$RF=="PAF_alcohol"]*n_midlife_q1),
+             n_midlife_q1,
+             correct=T)
+base_summary_q1$individual_PAF_LCI[base_summary_q1$RF=="PAF_alcohol"]<-a$conf.int[1]
+base_summary_q1$individual_PAF_UCI[base_summary_q1$RF=="PAF_alcohol"]<-a$conf.int[2]
+
+### 3.5 Smoking ==================================
+a<-prop.test((base_summary_q1$individual_PAF[base_summary_q1$RF=="PAF_smoking"]*n_latelife_q1),
+             n_latelife_q1,
+             correct=T)
+base_summary_q1$individual_PAF_LCI[base_summary_q1$RF=="PAF_smoking"]<-a$conf.int[1]
+base_summary_q1$individual_PAF_UCI[base_summary_q1$RF=="PAF_smoking"]<-a$conf.int[2]
+
+### 3.6 Social isolation ==================================
+a<-prop.test((base_summary_q1$individual_PAF[base_summary_q1$RF=="PAF_socialisolation"]*n_latelife_q1),
+             n_latelife_q1,
+             correct=T)
+base_summary_q1$individual_PAF_LCI[base_summary_q1$RF=="PAF_socialisolation"]<-a$conf.int[1]
+base_summary_q1$individual_PAF_UCI[base_summary_q1$RF=="PAF_socialisolation"]<-a$conf.int[2]
+
+### 3.7 Physical inactivity ==================================
+a<-prop.test((base_summary_q1$individual_PAF[base_summary_q1$RF=="PAF_pinactivity"]*n_latelife_q1),
+             n_latelife_q1,
+             correct=T)
+base_summary_q1$individual_PAF_LCI[base_summary_q1$RF=="PAF_pinactivity"]<-a$conf.int[1]
+base_summary_q1$individual_PAF_UCI[base_summary_q1$RF=="PAF_pinactivity"]<-a$conf.int[2]
+
+### 3.8 Diabetes ==================================
+a<-prop.test((base_summary_q1$individual_PAF[base_summary_q1$RF=="PAF_DBT"]*n_latelife_q1),
+             n_latelife_q1,
+             correct=T)
+base_summary_q1$individual_PAF_LCI[base_summary_q1$RF=="PAF_DBT"]<-a$conf.int[1]
+base_summary_q1$individual_PAF_UCI[base_summary_q1$RF=="PAF_DBT"]<-a$conf.int[2]
+
+### 3.9 Air pollution ==================================
+a<-prop.test((base_summary_q1$individual_PAF[base_summary_q1$RF=="PAF_air"]*n_latelife_q1),
+             n_latelife_q1,
+             correct=T)
+base_summary_q1$individual_PAF_LCI[base_summary_q1$RF=="PAF_air"]<-a$conf.int[1]
+base_summary_q1$individual_PAF_UCI[base_summary_q1$RF=="PAF_air"]<-a$conf.int[2]
+
+
+
+
+#adjusting the table
+base_summary_q1$Risk_factor<-c("Less education", "Obesity", "Hypertension", "Alcohol consumption", "Smoking", 
+                                "Social Isolation", "Physical inactivity", "Diabetes",
+                                "Air pollution")
+
+base_summary_q1 <- base_summary_q1[, c(14,2,3,4,5,6,7,8,9,10,11,12,13,1)]
+
+base_summary_q1 <- base_summary_q1[c(1,3,4,2,5,6,7,8,9),]
+
+
+#6. Table==============================================
+main_table<-base_summary_q1 %>% select(-RF, -overall_PAF, -`1-PAF`) %>%
+  gt() %>%
+  fmt_number(
+    columns = 5:9,
+    decimals = 1)%>%
+  fmt_percent(
+    columns = c(2:4,7:11),
+    decimals = 1
+  )  %>%
+  tab_spanner(
+    label = "RF prevalence",
+    columns = c(Prevalence, LCI, UCI))  %>%
+  tab_spanner(
+    label = "weigthed PAF",
+    columns = c(individual_PAF, individual_PAF_LCI, individual_PAF_UCI))  %>%
+  tab_header(title = md("PAF for dementia risk factors - q1 "))%>%
+  sub_missing(columns = everything(),
+              rows = everything(),
+              missing_text = "---"
+  )
+
+main_table
+
+#gt::gtsave(main_table, file = "Draft/annex_table_q1_2018.rtf")
+#7. Calculating de overall weihed PAF with CI==============================
+
+unique_overall_weigthed_PAF_q1_CI<-prop.test(unique_overall_weigthed_PAF_q1*n_total_q1,
+                                              n_total_q1,
+                                              correct=T)
+
+
+unique_overall_weigthed_PAF_q1_CI
+
+library(PropCIs)
+n_latelife_q1+n_midlife_q1
+(n_latelife_q1+n_midlife_q1)*0.352345
+
+
+exactci(5106, 14493,
+        conf.level=0.95)
+
+save(base_summary_q1, unique_overall_PAF_q1, unique_overall_weigthed_PAF_q1,
+     unique_overall_weigthed_PAF_q1_CI, 
+     n_midlife_q1,
+     n_latelife_q1,
+     n_total_q1, file="tabla_q1.RData")
+
+unique_overall_weigthed_PAF_q1*100
+unique_overall_weigthed_PAF_q1_CI
+
+rm(list = ls())
+
+# 1. Second quintil  ==============================
+
+
+#...............................................................................
+#                                                                              .
+# Second quintil ==============================================================.                                                                   .
+#                                                                              .
+#...............................................................................
+
+
+# 2. Data origin (risk_factor coded) ==============================
+
+load("base2018_general.RData")
+rm(basecom, comunalities)
+
+baseq2<-base2018 %>% filter(quintil_uc==2)
+
+# 3. Comunalities calculation==================
+
+basecom_q2<-baseq2 %>% select(starts_with("PAF"))
+
+
+library(psych)
+## 1. Tetrachoric correlation ==============================
+a<-tetrachoric(basecom_q2)                             
+b<-as.data.frame(a$rho)
+
+## 2. Communalitie calculation ===========
+
+# PCA resolution
+# Analize eigenvalues, keep Dim w/ eigenvalues >1
+eigenvalues <-eigen(b)$values
+eigenvalues
+
+# Only 3 dimensions has eigenvalues > 1
+eigenVectors<-eigen(b)$vectors
+eigenVectors
+
+comunalities<-as.data.frame(eigenVectors)
+comunalities$RF<-names(b)
+
+comunalities$comunality<-comunalities$V1^2+comunalities$V2^2+comunalities$V3^2
+
+comunalities_q2<-comunalities %>% select(RF, comunality)
+
+rm(base2018, a, b, eigenVectors, eigenvalues, comunalities)
+
+# 4. PAF table ================================================================
+
+## 1. Survey design =============================================
+base_midlife<-baseq2 %>% filter(bhch04>=45 & bhch04<=64) 
+n_midlife_q2<-nrow(base_midlife)
+
+design_midlife <- svydesign(id=~id, weights=~wf1p, data=base_midlife)
+
+base_latelife<-baseq2 %>% filter(bhch04>64) 
+design_latelife <- svydesign(id=~id, weights=~wf1p, data=base_latelife)
+n_latelife_q2<-nrow(base_latelife)
+
+n_total_q2<-n_latelife_q2 + n_midlife_q2
+
+## 2. Calculate prevalence =============================================
+
+### 2.1 Midlife factors =============================================
+PAF_education<-as.data.frame(svytable(~PAF_education, design = design_midlife))
+PAF_education<-PAF_education %>% pivot_wider(names_from = PAF_education, values_from =Freq)
+PAF_education$RF<-"PAF_education"
+PAF_education$Prevalence<-PAF_education$`1`/(PAF_education$`1`+PAF_education$`0`)
+a<-svyciprop(~PAF_education==1, design_midlife, method="li")
+
+PAF_education$LCI<-attr(a,"ci")[1]
+PAF_education$UCI<-attr(a,"ci")[2]
+
+
+PAF_obesity<-as.data.frame(svytable(~PAF_obesity, design = design_midlife))
+PAF_obesity<-PAF_obesity %>% pivot_wider(names_from = PAF_obesity, values_from =Freq)
+PAF_obesity$RF<-"PAF_obesity"
+PAF_obesity$Prevalence<-PAF_obesity$`1`/(PAF_obesity$`1`+PAF_obesity$`0`)
+a<-svyciprop(~PAF_obesity==1, design_midlife, method="li")
+PAF_obesity$LCI<-attr(a,"ci")[1]
+PAF_obesity$UCI<-attr(a,"ci")[2]
+
+
+PAF_HBP<-as.data.frame(svytable(~PAF_HBP, design = design_midlife))
+PAF_HBP<-PAF_HBP %>% pivot_wider(names_from = PAF_HBP, values_from =Freq)
+PAF_HBP$RF<-"PAF_HBP"
+PAF_HBP$Prevalence<-PAF_HBP$`1`/(PAF_HBP$`1`+PAF_HBP$`0`)
+a<-svyciprop(~PAF_HBP==1, design_midlife, method="li")
+PAF_HBP$LCI<-attr(a,"ci")[1]
+PAF_HBP$UCI<-attr(a,"ci")[2]
+
+
+PAF_alcohol<-as.data.frame(svytable(~PAF_alcohol, design = design_midlife))
+PAF_alcohol<-PAF_alcohol %>% pivot_wider(names_from = PAF_alcohol, values_from =Freq)
+PAF_alcohol$RF<-"PAF_alcohol"
+PAF_alcohol$Prevalence<-PAF_alcohol$`1`/(PAF_alcohol$`1`+PAF_alcohol$`0`)
+a<-svyciprop(~PAF_alcohol==1, design_midlife, method="li")
+PAF_alcohol$LCI<-attr(a,"ci")[1]
+PAF_alcohol$UCI<-attr(a,"ci")[2]
+
+### 2.2 Later-life factors =============================================
+
+PAF_smoking<-as.data.frame(svytable(~PAF_smoking, design = design_latelife))
+PAF_smoking<-PAF_smoking %>% pivot_wider(names_from = PAF_smoking, values_from =Freq)
+PAF_smoking$RF<-"PAF_smoking"
+PAF_smoking$Prevalence<-PAF_smoking$`1`/(PAF_smoking$`1`+PAF_smoking$`0`)
+a<-svyciprop(~PAF_smoking==1, design_latelife, method="li")
+PAF_smoking$LCI<-attr(a,"ci")[1]
+PAF_smoking$UCI<-attr(a,"ci")[2]
+
+
+PAF_socialisolation<-as.data.frame(svytable(~PAF_socialisolation, design = design_latelife))
+PAF_socialisolation<-PAF_socialisolation %>% pivot_wider(names_from = PAF_socialisolation, values_from =Freq)
+PAF_socialisolation$RF<-"PAF_socialisolation"
+PAF_socialisolation$Prevalence<-PAF_socialisolation$`1`/(PAF_socialisolation$`1`+PAF_socialisolation$`0`)
+a<-svyciprop(~PAF_socialisolation==1, design_latelife, method="li")
+PAF_socialisolation$LCI<-attr(a,"ci")[1]
+PAF_socialisolation$UCI<-attr(a,"ci")[2]
+
+
+PAF_pinactivity<-as.data.frame(svytable(~PAF_pinactivity, design = design_latelife))
+PAF_pinactivity<-PAF_pinactivity %>% pivot_wider(names_from = PAF_pinactivity, values_from =Freq)
+PAF_pinactivity$RF<-"PAF_pinactivity"
+PAF_pinactivity$Prevalence<-PAF_pinactivity$`1`/(PAF_pinactivity$`1`+PAF_pinactivity$`0`)
+a<-svyciprop(~PAF_pinactivity==1, design_latelife, method="li")
+PAF_pinactivity$LCI<-attr(a,"ci")[1]
+PAF_pinactivity$UCI<-attr(a,"ci")[2]
+
+PAF_DBT<-as.data.frame(svytable(~PAF_DBT, design = design_latelife))
+PAF_DBT<-PAF_DBT %>% pivot_wider(names_from = PAF_DBT, values_from =Freq)
+PAF_DBT$RF<-"PAF_DBT"
+PAF_DBT$Prevalence<-PAF_DBT$`1`/(PAF_DBT$`1`+PAF_DBT$`0`)
+a<-svyciprop(~PAF_DBT==1, design_latelife, method="li")
+PAF_DBT$LCI<-attr(a,"ci")[1]
+PAF_DBT$UCI<-attr(a,"ci")[2]
+
+PAF_air<-as.data.frame(svytable(~PAF_air, design = design_latelife))
+PAF_air<-PAF_air %>% pivot_wider(names_from = PAF_air, values_from =Freq)
+PAF_air$RF<-"PAF_air"
+PAF_air$Prevalence<-PAF_air$`1`/(PAF_air$`1`+PAF_air$`0`)
+a<-svyciprop(~PAF_air==1, design_latelife, method="li")
+PAF_air$LCI<-attr(a,"ci")[1]
+PAF_air$UCI<-attr(a,"ci")[2]
+
+
+## 3. Integrating into table ==================================================
+
+prevalences<-rbind(PAF_education,
+                   PAF_obesity, 
+                   PAF_HBP, 
+                   PAF_alcohol, 
+                   PAF_smoking, 
+                   PAF_socialisolation, 
+                   PAF_pinactivity, 
+                   PAF_DBT,
+                   PAF_air)
+
+
+prevalences<-prevalences %>% select(RF, Prevalence, LCI, UCI)
+
+RR<-c(1.6,1.6,1.6,1.2,1.6,1.6,1.4,1.5,1.1)
+
+
+prevalences$RR<-RR
+
+# comunalities<-comunalities %>% rename(RF=risk_factor)
+
+base_summary_q2<-left_join(prevalences, comunalities_q2, by="RF")
+
+
+## 4. PAF calculation=====================================
+
+base_summary_q2$weigth<-1-base_summary_q2$comunality
+
+base_summary_q2$PAF<-((base_summary_q2$Prevalence*
+                         (base_summary_q2$RR-1)))/
+  (1+base_summary_q2$Prevalence*(base_summary_q2$RR-1))
+
+base_summary_q2$overall_PAF<-1-(base_summary_q2$comunality*base_summary_q2$PAF)
+
+base_summary_q2$individual_PAF<-base_summary_q2$PAF/
+  sum(base_summary_q2$PAF)*(1-prod(base_summary_q2$overall_PAF))
+
+base_summary_q2$"1-PAF"<-1-base_summary_q2$PAF
+
+unique_overall_weigthed_PAF_q2<-1-prod(base_summary_q2$overall_PAF)
+unique_overall_PAF_q2<-1-prod(1-base_summary_q2$PAF)
+
+unique_overall_weigthed_PAF_q2
+unique_overall_PAF_q2
+
+
+## 5. Confident intervals===========================
+
+base_summary_q2$individual_PAF_LCI<-NA
+base_summary_q2$individual_PAF_UCI<-NA
+
+
+### 3.1 education ==================================
+a<-prop.test((base_summary_q2$individual_PAF[base_summary_q2$RF=="PAF_education"]*n_midlife_q2),
+             n_midlife_q2,
+             correct=T)
+base_summary_q2$individual_PAF_LCI[base_summary_q2$RF=="PAF_education"]<-a$conf.int[1]
+base_summary_q2$individual_PAF_UCI[base_summary_q2$RF=="PAF_education"]<-a$conf.int[2]
+
+### 3.2 obesity ==================================
+a<-prop.test((base_summary_q2$individual_PAF[base_summary_q2$RF=="PAF_obesity"]*n_midlife_q2),
+             n_midlife_q2,
+             correct=T)
+base_summary_q2$individual_PAF_LCI[base_summary_q2$RF=="PAF_obesity"]<-a$conf.int[1]
+base_summary_q2$individual_PAF_UCI[base_summary_q2$RF=="PAF_obesity"]<-a$conf.int[2]
+
+### 3.3 HBP ==================================
+a<-prop.test((base_summary_q2$individual_PAF[base_summary_q2$RF=="PAF_HBP"]*n_midlife_q2),
+             n_midlife_q2,
+             correct=T)
+base_summary_q2$individual_PAF_LCI[base_summary_q2$RF=="PAF_HBP"]<-a$conf.int[1]
+base_summary_q2$individual_PAF_UCI[base_summary_q2$RF=="PAF_HBP"]<-a$conf.int[2]
+
+### 3.4 Alcohol ==================================
+a<-prop.test((base_summary_q2$individual_PAF[base_summary_q2$RF=="PAF_alcohol"]*n_midlife_q2),
+             n_midlife_q2,
+             correct=T)
+base_summary_q2$individual_PAF_LCI[base_summary_q2$RF=="PAF_alcohol"]<-a$conf.int[1]
+base_summary_q2$individual_PAF_UCI[base_summary_q2$RF=="PAF_alcohol"]<-a$conf.int[2]
+
+### 3.5 Smoking ==================================
+a<-prop.test((base_summary_q2$individual_PAF[base_summary_q2$RF=="PAF_smoking"]*n_latelife_q2),
+             n_latelife_q2,
+             correct=T)
+base_summary_q2$individual_PAF_LCI[base_summary_q2$RF=="PAF_smoking"]<-a$conf.int[1]
+base_summary_q2$individual_PAF_UCI[base_summary_q2$RF=="PAF_smoking"]<-a$conf.int[2]
+
+### 3.6 Social isolation ==================================
+a<-prop.test((base_summary_q2$individual_PAF[base_summary_q2$RF=="PAF_socialisolation"]*n_latelife_q2),
+             n_latelife_q2,
+             correct=T)
+base_summary_q2$individual_PAF_LCI[base_summary_q2$RF=="PAF_socialisolation"]<-a$conf.int[1]
+base_summary_q2$individual_PAF_UCI[base_summary_q2$RF=="PAF_socialisolation"]<-a$conf.int[2]
+
+### 3.7 Physical inactivity ==================================
+a<-prop.test((base_summary_q2$individual_PAF[base_summary_q2$RF=="PAF_pinactivity"]*n_latelife_q2),
+             n_latelife_q2,
+             correct=T)
+base_summary_q2$individual_PAF_LCI[base_summary_q2$RF=="PAF_pinactivity"]<-a$conf.int[1]
+base_summary_q2$individual_PAF_UCI[base_summary_q2$RF=="PAF_pinactivity"]<-a$conf.int[2]
+
+### 3.8 Diabetes ==================================
+a<-prop.test((base_summary_q2$individual_PAF[base_summary_q2$RF=="PAF_DBT"]*n_latelife_q2),
+             n_latelife_q2,
+             correct=T)
+base_summary_q2$individual_PAF_LCI[base_summary_q2$RF=="PAF_DBT"]<-a$conf.int[1]
+base_summary_q2$individual_PAF_UCI[base_summary_q2$RF=="PAF_DBT"]<-a$conf.int[2]
+
+### 3.9 Air pollution ==================================
+a<-prop.test((base_summary_q2$individual_PAF[base_summary_q2$RF=="PAF_air"]*n_latelife_q2),
+             n_latelife_q2,
+             correct=T)
+base_summary_q2$individual_PAF_LCI[base_summary_q2$RF=="PAF_air"]<-a$conf.int[1]
+base_summary_q2$individual_PAF_UCI[base_summary_q2$RF=="PAF_air"]<-a$conf.int[2]
+
+
+
+
+#adjusting the table
+base_summary_q2$Risk_factor<-c("Less education", "Obesity", "Hypertension", "Alcohol consumption", "Smoking", 
+                               "Social Isolation", "Physical inactivity", "Diabetes",
+                               "Air pollution")
+
+base_summary_q2 <- base_summary_q2[, c(14,2,3,4,5,6,7,8,9,10,11,12,13,1)]
+
+base_summary_q2 <- base_summary_q2[c(1,3,4,2,5,6,7,8,9),]
+
+
+#6. Table==============================================
+main_table<-base_summary_q2 %>% select(-RF, -overall_PAF, -`1-PAF`) %>%
+  gt() %>%
+  fmt_number(
+    columns = 5:9,
+    decimals = 1)%>%
+  fmt_percent(
+    columns = c(2:4,7:11),
+    decimals = 1
+  )  %>%
+  tab_spanner(
+    label = "RF prevalence",
+    columns = c(Prevalence, LCI, UCI))  %>%
+  tab_spanner(
+    label = "weigthed PAF",
+    columns = c(individual_PAF, individual_PAF_LCI, individual_PAF_UCI))  %>%
+  tab_header(title = md("PAF for dementia risk factors - q2 "))%>%
+  sub_missing(columns = everything(),
+              rows = everything(),
+              missing_text = "---"
+  )
+
+main_table
+
+#gt::gtsave(main_table, file = "Draft/annex_table_q2_2018.rtf")
+#7. Calculating de overall weihed PAF with CI==============================
+
+unique_overall_weigthed_PAF_q2_CI<-prop.test(unique_overall_weigthed_PAF_q2*n_total_q2,
+                                             n_total_q2,
+                                             correct=T)
+
+
+unique_overall_weigthed_PAF_q2_CI
+
+library(PropCIs)
+n_latelife_q2+n_midlife_q2
+(n_latelife_q2+n_midlife_q2)*0.352345
+
+
+exactci(5106, 14493,
+        conf.level=0.95)
+
+save(base_summary_q2, unique_overall_PAF_q2, unique_overall_weigthed_PAF_q2,
+     unique_overall_weigthed_PAF_q2_CI, 
+     n_midlife_q2,
+     n_latelife_q2,
+     n_total_q2, file="tabla_q2.RData")
+
+unique_overall_weigthed_PAF_q2*100
+unique_overall_weigthed_PAF_q2_CI
+
+rm(list = ls())
+
+# 1. Third quintil  ==============================
+
+
+#...............................................................................
+#                                                                              .
+# Third quintil ==============================================================.                                                                   .
+#                                                                              .
+#...............................................................................
+
+
+# 2. Data origin (risk_factor coded) ==============================
+
+load("base2018_general.RData")
+rm(basecom, comunalities)
+
+baseq3<-base2018 %>% filter(quintil_uc==3)
+
+# 3. Comunalities calculation==================
+
+basecom_q3<-baseq3 %>% select(starts_with("PAF"))
+
+
+library(psych)
+## 1. Tetrachoric correlation ==============================
+a<-tetrachoric(basecom_q3)                             
+b<-as.data.frame(a$rho)
+
+## 2. Communalitie calculation ===========
+
+# PCA resolution
+# Analize eigenvalues, keep Dim w/ eigenvalues >1
+eigenvalues <-eigen(b)$values
+eigenvalues
+
+# Only 3 dimensions has eigenvalues > 1
+eigenVectors<-eigen(b)$vectors
+eigenVectors
+
+comunalities<-as.data.frame(eigenVectors)
+comunalities$RF<-names(b)
+
+comunalities$comunality<-comunalities$V1^2+comunalities$V2^2+comunalities$V3^2
+
+comunalities_q3<-comunalities %>% select(RF, comunality)
+
+rm(base2018, a, b, eigenVectors, eigenvalues, comunalities)
+
+# 4. PAF table ================================================================
+
+## 1. Survey design =============================================
+base_midlife<-baseq3 %>% filter(bhch04>=45 & bhch04<=64) 
+n_midlife_q3<-nrow(base_midlife)
+
+design_midlife <- svydesign(id=~id, weights=~wf1p, data=base_midlife)
+
+base_latelife<-baseq3 %>% filter(bhch04>64) 
+design_latelife <- svydesign(id=~id, weights=~wf1p, data=base_latelife)
+n_latelife_q3<-nrow(base_latelife)
+
+n_total_q3<-n_latelife_q3 + n_midlife_q3
+
+## 2. Calculate prevalence =============================================
+
+### 2.1 Midlife factors =============================================
+PAF_education<-as.data.frame(svytable(~PAF_education, design = design_midlife))
+PAF_education<-PAF_education %>% pivot_wider(names_from = PAF_education, values_from =Freq)
+PAF_education$RF<-"PAF_education"
+PAF_education$Prevalence<-PAF_education$`1`/(PAF_education$`1`+PAF_education$`0`)
+a<-svyciprop(~PAF_education==1, design_midlife, method="li")
+
+PAF_education$LCI<-attr(a,"ci")[1]
+PAF_education$UCI<-attr(a,"ci")[2]
+
+
+PAF_obesity<-as.data.frame(svytable(~PAF_obesity, design = design_midlife))
+PAF_obesity<-PAF_obesity %>% pivot_wider(names_from = PAF_obesity, values_from =Freq)
+PAF_obesity$RF<-"PAF_obesity"
+PAF_obesity$Prevalence<-PAF_obesity$`1`/(PAF_obesity$`1`+PAF_obesity$`0`)
+a<-svyciprop(~PAF_obesity==1, design_midlife, method="li")
+PAF_obesity$LCI<-attr(a,"ci")[1]
+PAF_obesity$UCI<-attr(a,"ci")[2]
+
+
+PAF_HBP<-as.data.frame(svytable(~PAF_HBP, design = design_midlife))
+PAF_HBP<-PAF_HBP %>% pivot_wider(names_from = PAF_HBP, values_from =Freq)
+PAF_HBP$RF<-"PAF_HBP"
+PAF_HBP$Prevalence<-PAF_HBP$`1`/(PAF_HBP$`1`+PAF_HBP$`0`)
+a<-svyciprop(~PAF_HBP==1, design_midlife, method="li")
+PAF_HBP$LCI<-attr(a,"ci")[1]
+PAF_HBP$UCI<-attr(a,"ci")[2]
+
+
+PAF_alcohol<-as.data.frame(svytable(~PAF_alcohol, design = design_midlife))
+PAF_alcohol<-PAF_alcohol %>% pivot_wider(names_from = PAF_alcohol, values_from =Freq)
+PAF_alcohol$RF<-"PAF_alcohol"
+PAF_alcohol$Prevalence<-PAF_alcohol$`1`/(PAF_alcohol$`1`+PAF_alcohol$`0`)
+a<-svyciprop(~PAF_alcohol==1, design_midlife, method="li")
+PAF_alcohol$LCI<-attr(a,"ci")[1]
+PAF_alcohol$UCI<-attr(a,"ci")[2]
+
+### 2.2 Later-life factors =============================================
+
+PAF_smoking<-as.data.frame(svytable(~PAF_smoking, design = design_latelife))
+PAF_smoking<-PAF_smoking %>% pivot_wider(names_from = PAF_smoking, values_from =Freq)
+PAF_smoking$RF<-"PAF_smoking"
+PAF_smoking$Prevalence<-PAF_smoking$`1`/(PAF_smoking$`1`+PAF_smoking$`0`)
+a<-svyciprop(~PAF_smoking==1, design_latelife, method="li")
+PAF_smoking$LCI<-attr(a,"ci")[1]
+PAF_smoking$UCI<-attr(a,"ci")[2]
+
+
+PAF_socialisolation<-as.data.frame(svytable(~PAF_socialisolation, design = design_latelife))
+PAF_socialisolation<-PAF_socialisolation %>% pivot_wider(names_from = PAF_socialisolation, values_from =Freq)
+PAF_socialisolation$RF<-"PAF_socialisolation"
+PAF_socialisolation$Prevalence<-PAF_socialisolation$`1`/(PAF_socialisolation$`1`+PAF_socialisolation$`0`)
+a<-svyciprop(~PAF_socialisolation==1, design_latelife, method="li")
+PAF_socialisolation$LCI<-attr(a,"ci")[1]
+PAF_socialisolation$UCI<-attr(a,"ci")[2]
+
+
+PAF_pinactivity<-as.data.frame(svytable(~PAF_pinactivity, design = design_latelife))
+PAF_pinactivity<-PAF_pinactivity %>% pivot_wider(names_from = PAF_pinactivity, values_from =Freq)
+PAF_pinactivity$RF<-"PAF_pinactivity"
+PAF_pinactivity$Prevalence<-PAF_pinactivity$`1`/(PAF_pinactivity$`1`+PAF_pinactivity$`0`)
+a<-svyciprop(~PAF_pinactivity==1, design_latelife, method="li")
+PAF_pinactivity$LCI<-attr(a,"ci")[1]
+PAF_pinactivity$UCI<-attr(a,"ci")[2]
+
+PAF_DBT<-as.data.frame(svytable(~PAF_DBT, design = design_latelife))
+PAF_DBT<-PAF_DBT %>% pivot_wider(names_from = PAF_DBT, values_from =Freq)
+PAF_DBT$RF<-"PAF_DBT"
+PAF_DBT$Prevalence<-PAF_DBT$`1`/(PAF_DBT$`1`+PAF_DBT$`0`)
+a<-svyciprop(~PAF_DBT==1, design_latelife, method="li")
+PAF_DBT$LCI<-attr(a,"ci")[1]
+PAF_DBT$UCI<-attr(a,"ci")[2]
+
+PAF_air<-as.data.frame(svytable(~PAF_air, design = design_latelife))
+PAF_air<-PAF_air %>% pivot_wider(names_from = PAF_air, values_from =Freq)
+PAF_air$RF<-"PAF_air"
+PAF_air$Prevalence<-PAF_air$`1`/(PAF_air$`1`+PAF_air$`0`)
+a<-svyciprop(~PAF_air==1, design_latelife, method="li")
+PAF_air$LCI<-attr(a,"ci")[1]
+PAF_air$UCI<-attr(a,"ci")[2]
+
+
+## 3. Integrating into table ==================================================
+
+prevalences<-rbind(PAF_education,
+                   PAF_obesity, 
+                   PAF_HBP, 
+                   PAF_alcohol, 
+                   PAF_smoking, 
+                   PAF_socialisolation, 
+                   PAF_pinactivity, 
+                   PAF_DBT,
+                   PAF_air)
+
+
+prevalences<-prevalences %>% select(RF, Prevalence, LCI, UCI)
+
+RR<-c(1.6,1.6,1.6,1.2,1.6,1.6,1.4,1.5,1.1)
+
+
+prevalences$RR<-RR
+
+# comunalities<-comunalities %>% rename(RF=risk_factor)
+
+base_summary_q3<-left_join(prevalences, comunalities_q3, by="RF")
+
+
+## 4. PAF calculation=====================================
+
+base_summary_q3$weigth<-1-base_summary_q3$comunality
+
+base_summary_q3$PAF<-((base_summary_q3$Prevalence*
+                         (base_summary_q3$RR-1)))/
+  (1+base_summary_q3$Prevalence*(base_summary_q3$RR-1))
+
+base_summary_q3$overall_PAF<-1-(base_summary_q3$comunality*base_summary_q3$PAF)
+
+base_summary_q3$individual_PAF<-base_summary_q3$PAF/
+  sum(base_summary_q3$PAF)*(1-prod(base_summary_q3$overall_PAF))
+
+base_summary_q3$"1-PAF"<-1-base_summary_q3$PAF
+
+unique_overall_weigthed_PAF_q3<-1-prod(base_summary_q3$overall_PAF)
+unique_overall_PAF_q3<-1-prod(1-base_summary_q3$PAF)
+
+unique_overall_weigthed_PAF_q3
+unique_overall_PAF_q3
+
+
+## 5. Confident intervals===========================
+
+base_summary_q3$individual_PAF_LCI<-NA
+base_summary_q3$individual_PAF_UCI<-NA
+
+
+### 3.1 education ==================================
+a<-prop.test((base_summary_q3$individual_PAF[base_summary_q3$RF=="PAF_education"]*n_midlife_q3),
+             n_midlife_q3,
+             correct=T)
+base_summary_q3$individual_PAF_LCI[base_summary_q3$RF=="PAF_education"]<-a$conf.int[1]
+base_summary_q3$individual_PAF_UCI[base_summary_q3$RF=="PAF_education"]<-a$conf.int[2]
+
+### 3.2 obesity ==================================
+a<-prop.test((base_summary_q3$individual_PAF[base_summary_q3$RF=="PAF_obesity"]*n_midlife_q3),
+             n_midlife_q3,
+             correct=T)
+base_summary_q3$individual_PAF_LCI[base_summary_q3$RF=="PAF_obesity"]<-a$conf.int[1]
+base_summary_q3$individual_PAF_UCI[base_summary_q3$RF=="PAF_obesity"]<-a$conf.int[2]
+
+### 3.3 HBP ==================================
+a<-prop.test((base_summary_q3$individual_PAF[base_summary_q3$RF=="PAF_HBP"]*n_midlife_q3),
+             n_midlife_q3,
+             correct=T)
+base_summary_q3$individual_PAF_LCI[base_summary_q3$RF=="PAF_HBP"]<-a$conf.int[1]
+base_summary_q3$individual_PAF_UCI[base_summary_q3$RF=="PAF_HBP"]<-a$conf.int[2]
+
+### 3.4 Alcohol ==================================
+a<-prop.test((base_summary_q3$individual_PAF[base_summary_q3$RF=="PAF_alcohol"]*n_midlife_q3),
+             n_midlife_q3,
+             correct=T)
+base_summary_q3$individual_PAF_LCI[base_summary_q3$RF=="PAF_alcohol"]<-a$conf.int[1]
+base_summary_q3$individual_PAF_UCI[base_summary_q3$RF=="PAF_alcohol"]<-a$conf.int[2]
+
+### 3.5 Smoking ==================================
+a<-prop.test((base_summary_q3$individual_PAF[base_summary_q3$RF=="PAF_smoking"]*n_latelife_q3),
+             n_latelife_q3,
+             correct=T)
+base_summary_q3$individual_PAF_LCI[base_summary_q3$RF=="PAF_smoking"]<-a$conf.int[1]
+base_summary_q3$individual_PAF_UCI[base_summary_q3$RF=="PAF_smoking"]<-a$conf.int[2]
+
+### 3.6 Social isolation ==================================
+a<-prop.test((base_summary_q3$individual_PAF[base_summary_q3$RF=="PAF_socialisolation"]*n_latelife_q3),
+             n_latelife_q3,
+             correct=T)
+base_summary_q3$individual_PAF_LCI[base_summary_q3$RF=="PAF_socialisolation"]<-a$conf.int[1]
+base_summary_q3$individual_PAF_UCI[base_summary_q3$RF=="PAF_socialisolation"]<-a$conf.int[2]
+
+### 3.7 Physical inactivity ==================================
+a<-prop.test((base_summary_q3$individual_PAF[base_summary_q3$RF=="PAF_pinactivity"]*n_latelife_q3),
+             n_latelife_q3,
+             correct=T)
+base_summary_q3$individual_PAF_LCI[base_summary_q3$RF=="PAF_pinactivity"]<-a$conf.int[1]
+base_summary_q3$individual_PAF_UCI[base_summary_q3$RF=="PAF_pinactivity"]<-a$conf.int[2]
+
+### 3.8 Diabetes ==================================
+a<-prop.test((base_summary_q3$individual_PAF[base_summary_q3$RF=="PAF_DBT"]*n_latelife_q3),
+             n_latelife_q3,
+             correct=T)
+base_summary_q3$individual_PAF_LCI[base_summary_q3$RF=="PAF_DBT"]<-a$conf.int[1]
+base_summary_q3$individual_PAF_UCI[base_summary_q3$RF=="PAF_DBT"]<-a$conf.int[2]
+
+### 3.9 Air pollution ==================================
+a<-prop.test((base_summary_q3$individual_PAF[base_summary_q3$RF=="PAF_air"]*n_latelife_q3),
+             n_latelife_q3,
+             correct=T)
+base_summary_q3$individual_PAF_LCI[base_summary_q3$RF=="PAF_air"]<-a$conf.int[1]
+base_summary_q3$individual_PAF_UCI[base_summary_q3$RF=="PAF_air"]<-a$conf.int[2]
+
+
+
+
+#adjusting the table
+base_summary_q3$Risk_factor<-c("Less education", "Obesity", "Hypertension", "Alcohol consumption", "Smoking", 
+                               "Social Isolation", "Physical inactivity", "Diabetes",
+                               "Air pollution")
+
+base_summary_q3 <- base_summary_q3[, c(14,2,3,4,5,6,7,8,9,10,11,12,13,1)]
+
+base_summary_q3 <- base_summary_q3[c(1,3,4,2,5,6,7,8,9),]
+
+
+#6. Table==============================================
+main_table<-base_summary_q3 %>% select(-RF, -overall_PAF, -`1-PAF`) %>%
+  gt() %>%
+  fmt_number(
+    columns = 5:9,
+    decimals = 1)%>%
+  fmt_percent(
+    columns = c(2:4,7:11),
+    decimals = 1
+  )  %>%
+  tab_spanner(
+    label = "RF prevalence",
+    columns = c(Prevalence, LCI, UCI))  %>%
+  tab_spanner(
+    label = "weigthed PAF",
+    columns = c(individual_PAF, individual_PAF_LCI, individual_PAF_UCI))  %>%
+  tab_header(title = md("PAF for dementia risk factors - q3 "))%>%
+  sub_missing(columns = everything(),
+              rows = everything(),
+              missing_text = "---"
+  )
+
+main_table
+
+#gt::gtsave(main_table, file = "Draft/annex_table_q3_2018.rtf")
+#7. Calculating de overall weihed PAF with CI==============================
+
+unique_overall_weigthed_PAF_q3_CI<-prop.test(unique_overall_weigthed_PAF_q3*n_total_q3,
+                                             n_total_q3,
+                                             correct=T)
+
+
+unique_overall_weigthed_PAF_q3_CI
+
+library(PropCIs)
+n_latelife_q3+n_midlife_q3
+(n_latelife_q3+n_midlife_q3)*0.352345
+
+
+exactci(5106, 14493,
+        conf.level=0.95)
+
+save(base_summary_q3, unique_overall_PAF_q3, unique_overall_weigthed_PAF_q3,
+     unique_overall_weigthed_PAF_q3_CI, 
+     n_midlife_q3,
+     n_latelife_q3,
+     n_total_q3, file="tabla_q3.RData")
+
+unique_overall_weigthed_PAF_q3*100
+unique_overall_weigthed_PAF_q3_CI
+
+rm(list = ls())
+
+# 1. Fourth quintil  ==============================
+
+
+#...............................................................................
+#                                                                              .
+# Fourth quintil ==============================================================.                                                                   .
+#                                                                              .
+#...............................................................................
+
+
+# 2. Data origin (risk_factor coded) ==============================
+
+load("base2018_general.RData")
+rm(basecom, comunalities)
+
+baseq4<-base2018 %>% filter(quintil_uc==4)
+
+# 3. Comunalities calculation==================
+
+basecom_q4<-baseq4 %>% select(starts_with("PAF"))
+
+
+library(psych)
+## 1. Tetrachoric correlation ==============================
+a<-tetrachoric(basecom_q4)                             
+b<-as.data.frame(a$rho)
+
+## 2. Communalitie calculation ===========
+
+# PCA resolution
+# Analize eigenvalues, keep Dim w/ eigenvalues >1
+eigenvalues <-eigen(b)$values
+eigenvalues
+
+# Only 3 dimensions has eigenvalues > 1
+eigenVectors<-eigen(b)$vectors
+eigenVectors
+
+comunalities<-as.data.frame(eigenVectors)
+comunalities$RF<-names(b)
+
+comunalities$comunality<-comunalities$V1^2+comunalities$V2^2+comunalities$V3^2
+
+comunalities_q4<-comunalities %>% select(RF, comunality)
+
+rm(base2018, a, b, eigenVectors, eigenvalues, comunalities)
+
+# 4. PAF table ================================================================
+
+## 1. Survey design =============================================
+base_midlife<-baseq4 %>% filter(bhch04>=45 & bhch04<=64) 
+n_midlife_q4<-nrow(base_midlife)
+
+design_midlife <- svydesign(id=~id, weights=~wf1p, data=base_midlife)
+
+base_latelife<-baseq4 %>% filter(bhch04>64) 
+design_latelife <- svydesign(id=~id, weights=~wf1p, data=base_latelife)
+n_latelife_q4<-nrow(base_latelife)
+
+n_total_q4<-n_latelife_q4 + n_midlife_q4
+
+## 2. Calculate prevalence =============================================
+
+### 2.1 Midlife factors =============================================
+PAF_education<-as.data.frame(svytable(~PAF_education, design = design_midlife))
+PAF_education<-PAF_education %>% pivot_wider(names_from = PAF_education, values_from =Freq)
+PAF_education$RF<-"PAF_education"
+PAF_education$Prevalence<-PAF_education$`1`/(PAF_education$`1`+PAF_education$`0`)
+a<-svyciprop(~PAF_education==1, design_midlife, method="li")
+
+PAF_education$LCI<-attr(a,"ci")[1]
+PAF_education$UCI<-attr(a,"ci")[2]
+
+
+PAF_obesity<-as.data.frame(svytable(~PAF_obesity, design = design_midlife))
+PAF_obesity<-PAF_obesity %>% pivot_wider(names_from = PAF_obesity, values_from =Freq)
+PAF_obesity$RF<-"PAF_obesity"
+PAF_obesity$Prevalence<-PAF_obesity$`1`/(PAF_obesity$`1`+PAF_obesity$`0`)
+a<-svyciprop(~PAF_obesity==1, design_midlife, method="li")
+PAF_obesity$LCI<-attr(a,"ci")[1]
+PAF_obesity$UCI<-attr(a,"ci")[2]
+
+
+PAF_HBP<-as.data.frame(svytable(~PAF_HBP, design = design_midlife))
+PAF_HBP<-PAF_HBP %>% pivot_wider(names_from = PAF_HBP, values_from =Freq)
+PAF_HBP$RF<-"PAF_HBP"
+PAF_HBP$Prevalence<-PAF_HBP$`1`/(PAF_HBP$`1`+PAF_HBP$`0`)
+a<-svyciprop(~PAF_HBP==1, design_midlife, method="li")
+PAF_HBP$LCI<-attr(a,"ci")[1]
+PAF_HBP$UCI<-attr(a,"ci")[2]
+
+
+PAF_alcohol<-as.data.frame(svytable(~PAF_alcohol, design = design_midlife))
+PAF_alcohol<-PAF_alcohol %>% pivot_wider(names_from = PAF_alcohol, values_from =Freq)
+PAF_alcohol$RF<-"PAF_alcohol"
+PAF_alcohol$Prevalence<-PAF_alcohol$`1`/(PAF_alcohol$`1`+PAF_alcohol$`0`)
+a<-svyciprop(~PAF_alcohol==1, design_midlife, method="li")
+PAF_alcohol$LCI<-attr(a,"ci")[1]
+PAF_alcohol$UCI<-attr(a,"ci")[2]
+
+### 2.2 Later-life factors =============================================
+
+PAF_smoking<-as.data.frame(svytable(~PAF_smoking, design = design_latelife))
+PAF_smoking<-PAF_smoking %>% pivot_wider(names_from = PAF_smoking, values_from =Freq)
+PAF_smoking$RF<-"PAF_smoking"
+PAF_smoking$Prevalence<-PAF_smoking$`1`/(PAF_smoking$`1`+PAF_smoking$`0`)
+a<-svyciprop(~PAF_smoking==1, design_latelife, method="li")
+PAF_smoking$LCI<-attr(a,"ci")[1]
+PAF_smoking$UCI<-attr(a,"ci")[2]
+
+
+PAF_socialisolation<-as.data.frame(svytable(~PAF_socialisolation, design = design_latelife))
+PAF_socialisolation<-PAF_socialisolation %>% pivot_wider(names_from = PAF_socialisolation, values_from =Freq)
+PAF_socialisolation$RF<-"PAF_socialisolation"
+PAF_socialisolation$Prevalence<-PAF_socialisolation$`1`/(PAF_socialisolation$`1`+PAF_socialisolation$`0`)
+a<-svyciprop(~PAF_socialisolation==1, design_latelife, method="li")
+PAF_socialisolation$LCI<-attr(a,"ci")[1]
+PAF_socialisolation$UCI<-attr(a,"ci")[2]
+
+
+PAF_pinactivity<-as.data.frame(svytable(~PAF_pinactivity, design = design_latelife))
+PAF_pinactivity<-PAF_pinactivity %>% pivot_wider(names_from = PAF_pinactivity, values_from =Freq)
+PAF_pinactivity$RF<-"PAF_pinactivity"
+PAF_pinactivity$Prevalence<-PAF_pinactivity$`1`/(PAF_pinactivity$`1`+PAF_pinactivity$`0`)
+a<-svyciprop(~PAF_pinactivity==1, design_latelife, method="li")
+PAF_pinactivity$LCI<-attr(a,"ci")[1]
+PAF_pinactivity$UCI<-attr(a,"ci")[2]
+
+PAF_DBT<-as.data.frame(svytable(~PAF_DBT, design = design_latelife))
+PAF_DBT<-PAF_DBT %>% pivot_wider(names_from = PAF_DBT, values_from =Freq)
+PAF_DBT$RF<-"PAF_DBT"
+PAF_DBT$Prevalence<-PAF_DBT$`1`/(PAF_DBT$`1`+PAF_DBT$`0`)
+a<-svyciprop(~PAF_DBT==1, design_latelife, method="li")
+PAF_DBT$LCI<-attr(a,"ci")[1]
+PAF_DBT$UCI<-attr(a,"ci")[2]
+
+PAF_air<-as.data.frame(svytable(~PAF_air, design = design_latelife))
+PAF_air<-PAF_air %>% pivot_wider(names_from = PAF_air, values_from =Freq)
+PAF_air$RF<-"PAF_air"
+PAF_air$Prevalence<-PAF_air$`1`/(PAF_air$`1`+PAF_air$`0`)
+a<-svyciprop(~PAF_air==1, design_latelife, method="li")
+PAF_air$LCI<-attr(a,"ci")[1]
+PAF_air$UCI<-attr(a,"ci")[2]
+
+
+## 3. Integrating into table ==================================================
+
+prevalences<-rbind(PAF_education,
+                   PAF_obesity, 
+                   PAF_HBP, 
+                   PAF_alcohol, 
+                   PAF_smoking, 
+                   PAF_socialisolation, 
+                   PAF_pinactivity, 
+                   PAF_DBT,
+                   PAF_air)
+
+
+prevalences<-prevalences %>% select(RF, Prevalence, LCI, UCI)
+
+RR<-c(1.6,1.6,1.6,1.2,1.6,1.6,1.4,1.5,1.1)
+
+
+prevalences$RR<-RR
+
+# comunalities<-comunalities %>% rename(RF=risk_factor)
+
+base_summary_q4<-left_join(prevalences, comunalities_q4, by="RF")
+
+
+## 4. PAF calculation=====================================
+
+base_summary_q4$weigth<-1-base_summary_q4$comunality
+
+base_summary_q4$PAF<-((base_summary_q4$Prevalence*
+                         (base_summary_q4$RR-1)))/
+  (1+base_summary_q4$Prevalence*(base_summary_q4$RR-1))
+
+base_summary_q4$overall_PAF<-1-(base_summary_q4$comunality*base_summary_q4$PAF)
+
+base_summary_q4$individual_PAF<-base_summary_q4$PAF/
+  sum(base_summary_q4$PAF)*(1-prod(base_summary_q4$overall_PAF))
+
+base_summary_q4$"1-PAF"<-1-base_summary_q4$PAF
+
+unique_overall_weigthed_PAF_q4<-1-prod(base_summary_q4$overall_PAF)
+unique_overall_PAF_q4<-1-prod(1-base_summary_q4$PAF)
+
+unique_overall_weigthed_PAF_q4
+unique_overall_PAF_q4
+
+
+## 5. Confident intervals===========================
+
+base_summary_q4$individual_PAF_LCI<-NA
+base_summary_q4$individual_PAF_UCI<-NA
+
+
+### 3.1 education ==================================
+a<-prop.test((base_summary_q4$individual_PAF[base_summary_q4$RF=="PAF_education"]*n_midlife_q4),
+             n_midlife_q4,
+             correct=T)
+base_summary_q4$individual_PAF_LCI[base_summary_q4$RF=="PAF_education"]<-a$conf.int[1]
+base_summary_q4$individual_PAF_UCI[base_summary_q4$RF=="PAF_education"]<-a$conf.int[2]
+
+### 3.2 obesity ==================================
+a<-prop.test((base_summary_q4$individual_PAF[base_summary_q4$RF=="PAF_obesity"]*n_midlife_q4),
+             n_midlife_q4,
+             correct=T)
+base_summary_q4$individual_PAF_LCI[base_summary_q4$RF=="PAF_obesity"]<-a$conf.int[1]
+base_summary_q4$individual_PAF_UCI[base_summary_q4$RF=="PAF_obesity"]<-a$conf.int[2]
+
+### 3.3 HBP ==================================
+a<-prop.test((base_summary_q4$individual_PAF[base_summary_q4$RF=="PAF_HBP"]*n_midlife_q4),
+             n_midlife_q4,
+             correct=T)
+base_summary_q4$individual_PAF_LCI[base_summary_q4$RF=="PAF_HBP"]<-a$conf.int[1]
+base_summary_q4$individual_PAF_UCI[base_summary_q4$RF=="PAF_HBP"]<-a$conf.int[2]
+
+### 3.4 Alcohol ==================================
+a<-prop.test((base_summary_q4$individual_PAF[base_summary_q4$RF=="PAF_alcohol"]*n_midlife_q4),
+             n_midlife_q4,
+             correct=T)
+base_summary_q4$individual_PAF_LCI[base_summary_q4$RF=="PAF_alcohol"]<-a$conf.int[1]
+base_summary_q4$individual_PAF_UCI[base_summary_q4$RF=="PAF_alcohol"]<-a$conf.int[2]
+
+### 3.5 Smoking ==================================
+a<-prop.test((base_summary_q4$individual_PAF[base_summary_q4$RF=="PAF_smoking"]*n_latelife_q4),
+             n_latelife_q4,
+             correct=T)
+base_summary_q4$individual_PAF_LCI[base_summary_q4$RF=="PAF_smoking"]<-a$conf.int[1]
+base_summary_q4$individual_PAF_UCI[base_summary_q4$RF=="PAF_smoking"]<-a$conf.int[2]
+
+### 3.6 Social isolation ==================================
+a<-prop.test((base_summary_q4$individual_PAF[base_summary_q4$RF=="PAF_socialisolation"]*n_latelife_q4),
+             n_latelife_q4,
+             correct=T)
+base_summary_q4$individual_PAF_LCI[base_summary_q4$RF=="PAF_socialisolation"]<-a$conf.int[1]
+base_summary_q4$individual_PAF_UCI[base_summary_q4$RF=="PAF_socialisolation"]<-a$conf.int[2]
+
+### 3.7 Physical inactivity ==================================
+a<-prop.test((base_summary_q4$individual_PAF[base_summary_q4$RF=="PAF_pinactivity"]*n_latelife_q4),
+             n_latelife_q4,
+             correct=T)
+base_summary_q4$individual_PAF_LCI[base_summary_q4$RF=="PAF_pinactivity"]<-a$conf.int[1]
+base_summary_q4$individual_PAF_UCI[base_summary_q4$RF=="PAF_pinactivity"]<-a$conf.int[2]
+
+### 3.8 Diabetes ==================================
+a<-prop.test((base_summary_q4$individual_PAF[base_summary_q4$RF=="PAF_DBT"]*n_latelife_q4),
+             n_latelife_q4,
+             correct=T)
+base_summary_q4$individual_PAF_LCI[base_summary_q4$RF=="PAF_DBT"]<-a$conf.int[1]
+base_summary_q4$individual_PAF_UCI[base_summary_q4$RF=="PAF_DBT"]<-a$conf.int[2]
+
+### 3.9 Air pollution ==================================
+a<-prop.test((base_summary_q4$individual_PAF[base_summary_q4$RF=="PAF_air"]*n_latelife_q4),
+             n_latelife_q4,
+             correct=T)
+base_summary_q4$individual_PAF_LCI[base_summary_q4$RF=="PAF_air"]<-a$conf.int[1]
+base_summary_q4$individual_PAF_UCI[base_summary_q4$RF=="PAF_air"]<-a$conf.int[2]
+
+
+
+
+#adjusting the table
+base_summary_q4$Risk_factor<-c("Less education", "Obesity", "Hypertension", "Alcohol consumption", "Smoking", 
+                               "Social Isolation", "Physical inactivity", "Diabetes",
+                               "Air pollution")
+
+base_summary_q4 <- base_summary_q4[, c(14,2,3,4,5,6,7,8,9,10,11,12,13,1)]
+
+base_summary_q4 <- base_summary_q4[c(1,3,4,2,5,6,7,8,9),]
+
+
+#6. Table==============================================
+main_table<-base_summary_q4 %>% select(-RF, -overall_PAF, -`1-PAF`) %>%
+  gt() %>%
+  fmt_number(
+    columns = 5:9,
+    decimals = 1)%>%
+  fmt_percent(
+    columns = c(2:4,7:11),
+    decimals = 1
+  )  %>%
+  tab_spanner(
+    label = "RF prevalence",
+    columns = c(Prevalence, LCI, UCI))  %>%
+  tab_spanner(
+    label = "weigthed PAF",
+    columns = c(individual_PAF, individual_PAF_LCI, individual_PAF_UCI))  %>%
+  tab_header(title = md("PAF for dementia risk factors - q4 "))%>%
+  sub_missing(columns = everything(),
+              rows = everything(),
+              missing_text = "---"
+  )
+
+main_table
+
+#gt::gtsave(main_table, file = "Draft/annex_table_q4_2018.rtf")
+#7. Calculating de overall weihed PAF with CI==============================
+
+unique_overall_weigthed_PAF_q4_CI<-prop.test(unique_overall_weigthed_PAF_q4*n_total_q4,
+                                             n_total_q4,
+                                             correct=T)
+
+
+unique_overall_weigthed_PAF_q4_CI
+
+library(PropCIs)
+n_latelife_q4+n_midlife_q4
+(n_latelife_q4+n_midlife_q4)*0.352345
+
+
+exactci(5106, 14493,
+        conf.level=0.95)
+
+save(base_summary_q4, unique_overall_PAF_q4, unique_overall_weigthed_PAF_q4,
+     unique_overall_weigthed_PAF_q4_CI, 
+     n_midlife_q4,
+     n_latelife_q4,
+     n_total_q4, file="tabla_q4.RData")
+
+unique_overall_weigthed_PAF_q4*100
+unique_overall_weigthed_PAF_q4_CI
+
+rm(list = ls())
+
+# 1. Fifth quintil  ==============================
+
+
+#...............................................................................
+#                                                                              .
+# Fifth quintil ==============================================================.                                                                   .
+#                                                                              .
+#...............................................................................
+
+
+# 2. Data origin (risk_factor coded) ==============================
+
+load("base2018_general.RData")
+rm(basecom, comunalities)
+
+baseq5<-base2018 %>% filter(quintil_uc==5)
+
+# 3. Comunalities calculation==================
+
+basecom_q5<-baseq5 %>% select(starts_with("PAF"))
+
+
+library(psych)
+## 1. Tetrachoric correlation ==============================
+a<-tetrachoric(basecom_q5)                             
+b<-as.data.frame(a$rho)
+
+## 2. Communalitie calculation ===========
+
+# PCA resolution
+# Analize eigenvalues, keep Dim w/ eigenvalues >1
+eigenvalues <-eigen(b)$values
+eigenvalues
+
+# Only 3 dimensions has eigenvalues > 1
+eigenVectors<-eigen(b)$vectors
+eigenVectors
+
+comunalities<-as.data.frame(eigenVectors)
+comunalities$RF<-names(b)
+
+comunalities$comunality<-comunalities$V1^2+comunalities$V2^2+comunalities$V3^2
+
+comunalities_q5<-comunalities %>% select(RF, comunality)
+
+rm(base2018, a, b, eigenVectors, eigenvalues, comunalities)
+
+# 4. PAF table ================================================================
+
+## 1. Survey design =============================================
+base_midlife<-baseq5 %>% filter(bhch04>=45 & bhch04<=64) 
+n_midlife_q5<-nrow(base_midlife)
+
+design_midlife <- svydesign(id=~id, weights=~wf1p, data=base_midlife)
+
+base_latelife<-baseq5 %>% filter(bhch04>64) 
+design_latelife <- svydesign(id=~id, weights=~wf1p, data=base_latelife)
+n_latelife_q5<-nrow(base_latelife)
+
+n_total_q5<-n_latelife_q5 + n_midlife_q5
+
+## 2. Calculate prevalence =============================================
+
+### 2.1 Midlife factors =============================================
+PAF_education<-as.data.frame(svytable(~PAF_education, design = design_midlife))
+PAF_education<-PAF_education %>% pivot_wider(names_from = PAF_education, values_from =Freq)
+PAF_education$RF<-"PAF_education"
+PAF_education$Prevalence<-PAF_education$`1`/(PAF_education$`1`+PAF_education$`0`)
+a<-svyciprop(~PAF_education==1, design_midlife, method="li")
+
+PAF_education$LCI<-attr(a,"ci")[1]
+PAF_education$UCI<-attr(a,"ci")[2]
+
+
+PAF_obesity<-as.data.frame(svytable(~PAF_obesity, design = design_midlife))
+PAF_obesity<-PAF_obesity %>% pivot_wider(names_from = PAF_obesity, values_from =Freq)
+PAF_obesity$RF<-"PAF_obesity"
+PAF_obesity$Prevalence<-PAF_obesity$`1`/(PAF_obesity$`1`+PAF_obesity$`0`)
+a<-svyciprop(~PAF_obesity==1, design_midlife, method="li")
+PAF_obesity$LCI<-attr(a,"ci")[1]
+PAF_obesity$UCI<-attr(a,"ci")[2]
+
+
+PAF_HBP<-as.data.frame(svytable(~PAF_HBP, design = design_midlife))
+PAF_HBP<-PAF_HBP %>% pivot_wider(names_from = PAF_HBP, values_from =Freq)
+PAF_HBP$RF<-"PAF_HBP"
+PAF_HBP$Prevalence<-PAF_HBP$`1`/(PAF_HBP$`1`+PAF_HBP$`0`)
+a<-svyciprop(~PAF_HBP==1, design_midlife, method="li")
+PAF_HBP$LCI<-attr(a,"ci")[1]
+PAF_HBP$UCI<-attr(a,"ci")[2]
+
+
+PAF_alcohol<-as.data.frame(svytable(~PAF_alcohol, design = design_midlife))
+PAF_alcohol<-PAF_alcohol %>% pivot_wider(names_from = PAF_alcohol, values_from =Freq)
+PAF_alcohol$RF<-"PAF_alcohol"
+PAF_alcohol$Prevalence<-PAF_alcohol$`1`/(PAF_alcohol$`1`+PAF_alcohol$`0`)
+a<-svyciprop(~PAF_alcohol==1, design_midlife, method="li")
+PAF_alcohol$LCI<-attr(a,"ci")[1]
+PAF_alcohol$UCI<-attr(a,"ci")[2]
+
+### 2.2 Later-life factors =============================================
+
+PAF_smoking<-as.data.frame(svytable(~PAF_smoking, design = design_latelife))
+PAF_smoking<-PAF_smoking %>% pivot_wider(names_from = PAF_smoking, values_from =Freq)
+PAF_smoking$RF<-"PAF_smoking"
+PAF_smoking$Prevalence<-PAF_smoking$`1`/(PAF_smoking$`1`+PAF_smoking$`0`)
+a<-svyciprop(~PAF_smoking==1, design_latelife, method="li")
+PAF_smoking$LCI<-attr(a,"ci")[1]
+PAF_smoking$UCI<-attr(a,"ci")[2]
+
+
+PAF_socialisolation<-as.data.frame(svytable(~PAF_socialisolation, design = design_latelife))
+PAF_socialisolation<-PAF_socialisolation %>% pivot_wider(names_from = PAF_socialisolation, values_from =Freq)
+PAF_socialisolation$RF<-"PAF_socialisolation"
+PAF_socialisolation$Prevalence<-PAF_socialisolation$`1`/(PAF_socialisolation$`1`+PAF_socialisolation$`0`)
+a<-svyciprop(~PAF_socialisolation==1, design_latelife, method="li")
+PAF_socialisolation$LCI<-attr(a,"ci")[1]
+PAF_socialisolation$UCI<-attr(a,"ci")[2]
+
+
+PAF_pinactivity<-as.data.frame(svytable(~PAF_pinactivity, design = design_latelife))
+PAF_pinactivity<-PAF_pinactivity %>% pivot_wider(names_from = PAF_pinactivity, values_from =Freq)
+PAF_pinactivity$RF<-"PAF_pinactivity"
+PAF_pinactivity$Prevalence<-PAF_pinactivity$`1`/(PAF_pinactivity$`1`+PAF_pinactivity$`0`)
+a<-svyciprop(~PAF_pinactivity==1, design_latelife, method="li")
+PAF_pinactivity$LCI<-attr(a,"ci")[1]
+PAF_pinactivity$UCI<-attr(a,"ci")[2]
+
+PAF_DBT<-as.data.frame(svytable(~PAF_DBT, design = design_latelife))
+PAF_DBT<-PAF_DBT %>% pivot_wider(names_from = PAF_DBT, values_from =Freq)
+PAF_DBT$RF<-"PAF_DBT"
+PAF_DBT$Prevalence<-PAF_DBT$`1`/(PAF_DBT$`1`+PAF_DBT$`0`)
+a<-svyciprop(~PAF_DBT==1, design_latelife, method="li")
+PAF_DBT$LCI<-attr(a,"ci")[1]
+PAF_DBT$UCI<-attr(a,"ci")[2]
+
+PAF_air<-as.data.frame(svytable(~PAF_air, design = design_latelife))
+PAF_air<-PAF_air %>% pivot_wider(names_from = PAF_air, values_from =Freq)
+PAF_air$RF<-"PAF_air"
+PAF_air$Prevalence<-PAF_air$`1`/(PAF_air$`1`+PAF_air$`0`)
+a<-svyciprop(~PAF_air==1, design_latelife, method="li")
+PAF_air$LCI<-attr(a,"ci")[1]
+PAF_air$UCI<-attr(a,"ci")[2]
+
+
+## 3. Integrating into table ==================================================
+
+prevalences<-rbind(PAF_education,
+                   PAF_obesity, 
+                   PAF_HBP, 
+                   PAF_alcohol, 
+                   PAF_smoking, 
+                   PAF_socialisolation, 
+                   PAF_pinactivity, 
+                   PAF_DBT,
+                   PAF_air)
+
+
+prevalences<-prevalences %>% select(RF, Prevalence, LCI, UCI)
+
+RR<-c(1.6,1.6,1.6,1.2,1.6,1.6,1.4,1.5,1.1)
+
+
+prevalences$RR<-RR
+
+# comunalities<-comunalities %>% rename(RF=risk_factor)
+
+base_summary_q5<-left_join(prevalences, comunalities_q5, by="RF")
+
+
+## 4. PAF calculation=====================================
+
+base_summary_q5$weigth<-1-base_summary_q5$comunality
+
+base_summary_q5$PAF<-((base_summary_q5$Prevalence*
+                         (base_summary_q5$RR-1)))/
+  (1+base_summary_q5$Prevalence*(base_summary_q5$RR-1))
+
+base_summary_q5$overall_PAF<-1-(base_summary_q5$comunality*base_summary_q5$PAF)
+
+base_summary_q5$individual_PAF<-base_summary_q5$PAF/
+  sum(base_summary_q5$PAF)*(1-prod(base_summary_q5$overall_PAF))
+
+base_summary_q5$"1-PAF"<-1-base_summary_q5$PAF
+
+unique_overall_weigthed_PAF_q5<-1-prod(base_summary_q5$overall_PAF)
+unique_overall_PAF_q5<-1-prod(1-base_summary_q5$PAF)
+
+unique_overall_weigthed_PAF_q5
+unique_overall_PAF_q5
+
+
+## 5. Confident intervals===========================
+
+base_summary_q5$individual_PAF_LCI<-NA
+base_summary_q5$individual_PAF_UCI<-NA
+
+
+### 3.1 education ==================================
+a<-prop.test((base_summary_q5$individual_PAF[base_summary_q5$RF=="PAF_education"]*n_midlife_q5),
+             n_midlife_q5,
+             correct=T)
+base_summary_q5$individual_PAF_LCI[base_summary_q5$RF=="PAF_education"]<-a$conf.int[1]
+base_summary_q5$individual_PAF_UCI[base_summary_q5$RF=="PAF_education"]<-a$conf.int[2]
+
+### 3.2 obesity ==================================
+a<-prop.test((base_summary_q5$individual_PAF[base_summary_q5$RF=="PAF_obesity"]*n_midlife_q5),
+             n_midlife_q5,
+             correct=T)
+base_summary_q5$individual_PAF_LCI[base_summary_q5$RF=="PAF_obesity"]<-a$conf.int[1]
+base_summary_q5$individual_PAF_UCI[base_summary_q5$RF=="PAF_obesity"]<-a$conf.int[2]
+
+### 3.3 HBP ==================================
+a<-prop.test((base_summary_q5$individual_PAF[base_summary_q5$RF=="PAF_HBP"]*n_midlife_q5),
+             n_midlife_q5,
+             correct=T)
+base_summary_q5$individual_PAF_LCI[base_summary_q5$RF=="PAF_HBP"]<-a$conf.int[1]
+base_summary_q5$individual_PAF_UCI[base_summary_q5$RF=="PAF_HBP"]<-a$conf.int[2]
+
+### 3.4 Alcohol ==================================
+a<-prop.test((base_summary_q5$individual_PAF[base_summary_q5$RF=="PAF_alcohol"]*n_midlife_q5),
+             n_midlife_q5,
+             correct=T)
+base_summary_q5$individual_PAF_LCI[base_summary_q5$RF=="PAF_alcohol"]<-a$conf.int[1]
+base_summary_q5$individual_PAF_UCI[base_summary_q5$RF=="PAF_alcohol"]<-a$conf.int[2]
+
+### 3.5 Smoking ==================================
+a<-prop.test((base_summary_q5$individual_PAF[base_summary_q5$RF=="PAF_smoking"]*n_latelife_q5),
+             n_latelife_q5,
+             correct=T)
+base_summary_q5$individual_PAF_LCI[base_summary_q5$RF=="PAF_smoking"]<-a$conf.int[1]
+base_summary_q5$individual_PAF_UCI[base_summary_q5$RF=="PAF_smoking"]<-a$conf.int[2]
+
+### 3.6 Social isolation ==================================
+a<-prop.test((base_summary_q5$individual_PAF[base_summary_q5$RF=="PAF_socialisolation"]*n_latelife_q5),
+             n_latelife_q5,
+             correct=T)
+base_summary_q5$individual_PAF_LCI[base_summary_q5$RF=="PAF_socialisolation"]<-a$conf.int[1]
+base_summary_q5$individual_PAF_UCI[base_summary_q5$RF=="PAF_socialisolation"]<-a$conf.int[2]
+
+### 3.7 Physical inactivity ==================================
+a<-prop.test((base_summary_q5$individual_PAF[base_summary_q5$RF=="PAF_pinactivity"]*n_latelife_q5),
+             n_latelife_q5,
+             correct=T)
+base_summary_q5$individual_PAF_LCI[base_summary_q5$RF=="PAF_pinactivity"]<-a$conf.int[1]
+base_summary_q5$individual_PAF_UCI[base_summary_q5$RF=="PAF_pinactivity"]<-a$conf.int[2]
+
+### 3.8 Diabetes ==================================
+a<-prop.test((base_summary_q5$individual_PAF[base_summary_q5$RF=="PAF_DBT"]*n_latelife_q5),
+             n_latelife_q5,
+             correct=T)
+base_summary_q5$individual_PAF_LCI[base_summary_q5$RF=="PAF_DBT"]<-a$conf.int[1]
+base_summary_q5$individual_PAF_UCI[base_summary_q5$RF=="PAF_DBT"]<-a$conf.int[2]
+
+### 3.9 Air pollution ==================================
+a<-prop.test((base_summary_q5$individual_PAF[base_summary_q5$RF=="PAF_air"]*n_latelife_q5),
+             n_latelife_q5,
+             correct=T)
+base_summary_q5$individual_PAF_LCI[base_summary_q5$RF=="PAF_air"]<-a$conf.int[1]
+base_summary_q5$individual_PAF_UCI[base_summary_q5$RF=="PAF_air"]<-a$conf.int[2]
+
+
+
+
+#adjusting the table
+base_summary_q5$Risk_factor<-c("Less education", "Obesity", "Hypertension", "Alcohol consumption", "Smoking", 
+                               "Social Isolation", "Physical inactivity", "Diabetes",
+                               "Air pollution")
+
+base_summary_q5 <- base_summary_q5[, c(14,2,3,4,5,6,7,8,9,10,11,12,13,1)]
+
+base_summary_q5 <- base_summary_q5[c(1,3,4,2,5,6,7,8,9),]
+
+
+#6. Table==============================================
+main_table<-base_summary_q5 %>% select(-RF, -overall_PAF, -`1-PAF`) %>%
+  gt() %>%
+  fmt_number(
+    columns = 5:9,
+    decimals = 1)%>%
+  fmt_percent(
+    columns = c(2:4,7:11),
+    decimals = 1
+  )  %>%
+  tab_spanner(
+    label = "RF prevalence",
+    columns = c(Prevalence, LCI, UCI))  %>%
+  tab_spanner(
+    label = "weigthed PAF",
+    columns = c(individual_PAF, individual_PAF_LCI, individual_PAF_UCI))  %>%
+  tab_header(title = md("PAF for dementia risk factors - q5 "))%>%
+  sub_missing(columns = everything(),
+              rows = everything(),
+              missing_text = "---"
+  )
+
+main_table
+
+#gt::gtsave(main_table, file = "Draft/annex_table_q5_2018.rtf")
+#7. Calculating de overall weihed PAF with CI==============================
+
+unique_overall_weigthed_PAF_q5_CI<-prop.test(unique_overall_weigthed_PAF_q5*n_total_q5,
+                                             n_total_q5,
+                                             correct=T)
+
+
+unique_overall_weigthed_PAF_q5_CI
+
+library(PropCIs)
+n_latelife_q5+n_midlife_q5
+(n_latelife_q5+n_midlife_q5)*0.352345
+
+
+exactci(5106, 14493,
+        conf.level=0.95)
+
+save(base_summary_q5, unique_overall_PAF_q5, unique_overall_weigthed_PAF_q5,
+     unique_overall_weigthed_PAF_q5_CI, 
+     n_midlife_q5,
+     n_latelife_q5,
+     n_total_q5, file="tabla_q5.RData")
+
+unique_overall_weigthed_PAF_q5*100
+unique_overall_weigthed_PAF_q5_CI
+
+rm(list = ls())
